@@ -83,6 +83,32 @@ interface SearchResult {
   url: string;
 }
 
+/**
+ * CineFreak search titles contain SEO metadata after the real title, for
+ * example "(2011) Hindi Dubbed ... Season 1 ... Watch Online". Matching that
+ * full string makes a correct result lose to the shared matcher threshold.
+ * Keep the original title on SearchResult for fetching and IMDB verification,
+ * but score the clean leading title instead.
+ */
+function titleForMatching(rawTitle: string): string {
+  const decoded = decodeEntities(rawTitle).replace(/\s+/g, " ").trim();
+  if (!decoded) return rawTitle;
+
+  const yearMarker = decoded.search(/\s(?:\(|\[)?(?:19|20)\d{2}\b/i);
+  if (yearMarker > 0) {
+    return decoded.slice(0, yearMarker).replace(/[\s\-–—|]+$/, "").trim();
+  }
+
+  const metadataMarker = decoded.search(
+    /\s(?:full\s+movie|watch\s+online|all\s+episodes|web\s+series)\b/i,
+  );
+  if (metadataMarker > 0) {
+    return decoded.slice(0, metadataMarker).replace(/[\s\-–—|]+$/, "").trim();
+  }
+
+  return decoded;
+}
+
 async function searchCinefreak(
   query: string,
   ua: string,
@@ -135,7 +161,7 @@ function matchResult(
     const seasonMatch = /season\s*(\d+)/i.exec(r.title);
     const yearMatch = /\b(19|20)\d{2}\b/.exec(r.title);
     return {
-      title: r.title,
+      title: titleForMatching(r.title),
       year: yearMatch ? parseInt(yearMatch[0], 10) : undefined,
       season: seasonMatch ? parseInt(seasonMatch[1]!, 10) : undefined,
       raw: r,
