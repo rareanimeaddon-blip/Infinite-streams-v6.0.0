@@ -180,6 +180,14 @@ export interface StreamflixStream {
   };
 }
 
+function serverName(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "");
+  } catch {
+    return "CDN";
+  }
+}
+
 function buildStreams(
   urls: string[],
   label: string,
@@ -187,8 +195,8 @@ function buildStreams(
 ): StreamflixStream[] {
   return urls.map((url, index) => ({
     url,
-    name: "StreamFlix",
-    title: `StreamFlix${index > 0 ? ` Mirror ${index}` : ""}${subs} | ${label}`,
+    name: `StreamFlix | ${serverName(url)}`,
+    title: `${serverName(url)}${index > 0 ? ` Mirror ${index}` : ""}${subs} | ${label}`,
     behaviorHints: { notWebReady: true },
   }));
 }

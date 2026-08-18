@@ -303,6 +303,8 @@ const PROVIDER_PATTERNS: Record<string, RegExp> = {
   fourkdhub:    /4KHDHub/i,
   hdhub4u:      /HDHub4U/i,
   zxcstreams:   /ZXCStream/i,
+  netmirror:    /NetMirror/i,
+  vidfast:      /VidFast/i,
 };
 
 function countByProvider(streams: { name?: string }[]): Map<string, number> {
