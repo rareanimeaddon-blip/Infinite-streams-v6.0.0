@@ -1,19 +1,18 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import app from "./app.js";
+import { logger } from "./lib/logger.js";
+import { getAllCatalogItems, buildAtoonCatalog } from "./providers/rareanime/scraper.js";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
+const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+// Extra ports that Replit's proxy may route traffic to.
+// Port 8080: Replit routes /api/* requests here (path-based routing).
+// Port 8081: fallback for external-port-80 traffic on some proxy configs.
+const EXTRA_PORTS: number[] = [8080, 8081].filter((p) => p !== port);
 
 app.listen(port, (err) => {
   if (err) {
@@ -22,4 +21,20 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Bind extra ports silently — ignore EADDRINUSE in case they're taken
+  for (const extra of EXTRA_PORTS) {
+    app.listen(extra, (err2) => {
+      if (err2) {
+        logger.warn({ port: extra, err: err2 }, "Extra port bind failed (ignored)");
+      } else {
+        logger.info({ port: extra }, "Server also listening on extra port");
+      }
+    });
+  }
+
+  Promise.allSettled([
+    getAllCatalogItems().then(() => logger.info("RareAnime catalog pre-warm done")),
+    buildAtoonCatalog().then(() => logger.info("Atoon catalog pre-warm done")),
+  ]).catch(() => {});
 });
